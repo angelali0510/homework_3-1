@@ -27,7 +27,7 @@ class ibkr_app(EWrapper, EClient):
         # I've already done the same general process you need to go through
         # in the self.error_messages instance variable, so you can use that as
         # a guide.
-        self.historical_data = ''
+        self.historical_data = pd.DataFrame(columns=["date", "open", "high", "low", "close"])
         self.historical_data_end = ''
         self.contract_details = ''
         self.contract_details_end = ''
@@ -52,12 +52,19 @@ class ibkr_app(EWrapper, EClient):
         #   so that it's accepted by the plotly candlestick function.
         # Take a look at candlestick_plot.ipynb for some help!
         # assign the dataframe to self.historical_data.
-        # print(reqId, bar)
-        self.historical_data = bar
+        row = pd.DataFrame(
+            {'date': [bar.date],
+             'open': [bar.open],
+             'high': [bar.high],
+             'low': [bar.low],
+             'close': [bar.close]
+             }
+        )
+        self.historical_data = pd.concat([self.historical_data, row], ignore_index=True)
 
     def historicalDataEnd(self, reqId: int, start: str, end: str):
         # super().historicalDataEnd(reqId, start, end)
-        print("HistoricalDataEnd. ReqId:", reqId, "from", start, "to", end)
+        # print("HistoricalDataEnd. ReqId:", reqId, "from", start, "to", end)
         self.historical_data_end = reqId
 
 def fetch_managed_accounts(hostname=default_hostname, port=default_port,
@@ -75,9 +82,9 @@ def fetch_managed_accounts(hostname=default_hostname, port=default_port,
     app.disconnect()
     return app.managed_accounts
 
-def fetch_historical_data(contract, endDateTime='', durationStr='30 D',
-                          barSizeSetting='1 hour', whatToShow='MIDPOINT',
-                          useRTH=True, hostname=default_hostname,
+def fetch_historical_data(contract, endDateTime, durationStr,
+                          barSizeSetting, whatToShow,
+                          useRTH, hostname=default_hostname,
                           port=default_port, client_id=default_client_id):
     app = ibkr_app()
     app.connect(hostname, port, client_id)
