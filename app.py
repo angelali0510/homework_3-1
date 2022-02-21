@@ -155,7 +155,7 @@ app.layout = html.Div([
              ["1 sec", "5 secs", "15 secs", "30 secs", "1 min", "2 mins", "3 mins",
               "5 mins", '15 mins', "30 mins", "1 hour", "1 day"],
              "1 hour", id='bar-size-setting')],
-         style = {'width': '365px'},
+         style={'width': '365px'},
     ),
     html.Br(),
 
@@ -221,8 +221,8 @@ app.layout = html.Div([
      Input('edt-second', 'value'), Input('duration-str-number', 'value'), Input('duration-str-unit', 'value')],
     # The callback function will fire when the submit button's n_clicks changes
     # The currency input's value is passed in as a "State" because if the user is typing and the value changes, then
-    #   the callback function won't run. But the callback does run because the submit button was pressed, then the value
-    #   of 'currency-input' at the time the button was pressed DOES get passed in.
+    # the callback function won't run. But the callback does run because the submit button was pressed, then the value
+    # of 'currency-input' at the time the button was pressed DOES get passed in.
     State('currency-input', 'value')
 )
 def update_candlestick_graph(n_clicks, what_to_show, bar_size_setting, use_rth, edt_date, edt_hour,
