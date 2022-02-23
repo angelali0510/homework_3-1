@@ -17,6 +17,7 @@ server = app.server
 app.layout = html.Div([
 
     # Section title
+    html.H1("Hi"),
     html.H1("Section 1: Fetch & Display exchange rate historical data"),
 
     html.H4("Enter a currency pair:"),
