@@ -10,6 +10,9 @@ import pandas as pd
 # Make a Dash app!
 app = dash.Dash(__name__)
 
+# ADD this!
+server = app.server
+
 # Define the layout.
 app.layout = html.Div([
 
