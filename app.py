@@ -19,36 +19,6 @@ app.layout = html.Div([
     # Section title
     html.H1("Section 1: Fetch & Display exchange rate historical data"),
 
-    html.H4("Enter a currency pair:"),
-    html.P(
-        children=[
-            "See the various currency pairs here: ",
-            html.A(
-                "currency pairs",
-                href='https://www.interactivebrokers.com/en/index.php?f=2222&exch=ibfxpro&showcategories=FX'
-            )
-        ]
-    ),
-    html.Br(),
-
-    # Currency pair text input, within its own div.
-    html.Div(
-        # The input object itself
-        ["Input Currency: ", dcc.Input(
-            id='currency-input', value='AUD.CAD', type='text'
-        )],
-        # Style it so that the submit button appears beside the input.
-        style={'display': 'inline-block', 'padding-top': '5px'}
-    ),
-    # Submit button
-    html.Button('Submit', id='submit-button', n_clicks=0),
-    # Line break
-    html.Br(),
-    # Div to hold the initial instructions and the updated info once submit is pressed
-    html.Div(id='currency-output', children='Enter a currency code and press submit'),
-    html.Br(),
-
-
     # endDateTime parameter
     html.H4("Select value for endDateTime:"),
     html.Div(
@@ -187,6 +157,35 @@ app.layout = html.Div([
          )]),
     html.Br(),
 
+html.H4("Enter a currency pair:"),
+    html.P(
+        children=[
+            "See the various currency pairs here: ",
+            html.A(
+                "currency pairs",
+                href='https://www.interactivebrokers.com/en/index.php?f=2222&exch=ibfxpro&showcategories=FX'
+            )
+        ]
+    ),
+    html.Br(),
+
+    # Currency pair text input, within its own div.
+    html.Div(
+        # The input object itself
+        ["Input Currency: ", dcc.Input(
+            id='currency-input', value='AUD.CAD', type='text'
+        )],
+        # Style it so that the submit button appears beside the input.
+        style={'display': 'inline-block', 'padding-top': '5px'}
+    ),
+    # Submit button
+    html.Button('Submit', id='submit-button', n_clicks=0),
+    # Line break
+    html.Br(),
+    # Div to hold the initial instructions and the updated info once submit is pressed
+    html.Div(id='currency-output', children='Enter a currency code and press submit'),
+    html.Br(),
+
     # Div to hold the candlestick graph
     html.Div([dcc.Graph(id='candlestick-graph')]),
     # Another line break
@@ -212,24 +211,25 @@ app.layout = html.Div([
     html.Button('Trade', id='trade-button', n_clicks=0)
 ])
 
-
-# Callback for what to do when submit-button is pressed
 @app.callback(
     [  # there's more than one output here, so you have to use square brackets to pass it in as an array.
         Output(component_id='currency-output', component_property='children'),
         Output(component_id='candlestick-graph', component_property='figure')
     ],
-    [Input('submit-button', 'n_clicks'), Input('what-to-show', 'value'), Input('bar-size-setting', 'value'),
-     Input('use-rth', 'value'), Input('edt-date', 'date'), Input('edt-hour', 'value'), Input('edt-minute', 'value'),
-     Input('edt-second', 'value'), Input('duration-str-number', 'value'), Input('duration-str-unit', 'value')],
-    # The callback function will fire when the submit button's n_clicks changes
+    Input('submit-button', 'n_clicks'),
+    # The callback function will
+    # fire when the submit button's n_clicks changes
     # The currency input's value is passed in as a "State" because if the user is typing and the value changes, then
-    # the callback function won't run. But the callback does run because the submit button was pressed, then the value
-    # of 'currency-input' at the time the button was pressed DOES get passed in.
-    State('currency-input', 'value')
+    #   the callback function won't run. But the callback does run because the submit button was pressed, then the value
+    #   of 'currency-input' at the time the button was pressed DOES get passed in.
+    [State('currency-input', 'value'), State('what-to-show', 'value'),
+     State('bar-size-setting', 'value'), State('use-rth', 'value'),
+     State('edt-date', 'date'), State('edt-hour', 'value'),
+     State('edt-minute', 'value'), State('edt-second', 'value'),
+     State('duration-str-number', 'value'), State('duration-str-unit', 'value'),]
 )
-def update_candlestick_graph(n_clicks, what_to_show, bar_size_setting, use_rth, edt_date, edt_hour,
-                             edt_minute, edt_second, duration_str_number, duration_str_unit, currency_string):
+def update_candlestick_graph(n_clicks, currency_string, what_to_show, bar_size_setting, use_rth, edt_date, edt_hour,
+                             edt_minute, edt_second, duration_str_number, duration_str_unit):
     # n_clicks doesn't get used, we only include it for the dependency.
 
     if any([i is None for i in [edt_date, edt_hour, edt_minute, edt_second]]):
