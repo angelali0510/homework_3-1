@@ -187,7 +187,14 @@ html.H4("Enter a currency pair:"),
     html.Br(),
 
     # Div to hold the candlestick graph
-    html.Div([dcc.Graph(id='candlestick-graph')]),
+    html.Div(
+        dcc.Loading(
+            id="loading-1",
+            type="default",
+            children=dcc.Graph(id='candlestick-graph')
+        )
+    ),
+
     # Another line break
     html.Br(),
     # Section title
@@ -226,11 +233,36 @@ html.H4("Enter a currency pair:"),
      State('bar-size-setting', 'value'), State('use-rth', 'value'),
      State('edt-date', 'date'), State('edt-hour', 'value'),
      State('edt-minute', 'value'), State('edt-second', 'value'),
-     State('duration-str-number', 'value'), State('duration-str-unit', 'value'),]
+     State('duration-str-number', 'value'), State('duration-str-unit', 'value')]
 )
 def update_candlestick_graph(n_clicks, currency_string, what_to_show, bar_size_setting, use_rth, edt_date, edt_hour,
                              edt_minute, edt_second, duration_str_number, duration_str_unit):
     # n_clicks doesn't get used, we only include it for the dependency.
+
+    # First things first -- what currency pair history do you want to fetch?
+    # Define it as a contract object!
+    contract = Contract()
+    contract.symbol = currency_string.split(".")[0]  # set this to the FIRST currency (before the ".")
+    contract.secType = 'CASH'
+    contract.exchange = 'IDEALPRO'  # 'IDEALPRO' is the currency exchange.
+    contract.currency = currency_string.split(".")[1]  # set this to the FIRST currency (before the ".")
+
+    # Verify that you've got the right contract
+    contract_details = fetch_contract_details(contract)
+
+    if type(contract_details) == str:
+        message = f"Error: {contract_details}! Please check your input!"
+        # If input is wrong, return blank figure
+        return message, go.Figure()
+    else:
+        s = str(contract_details).split(",")[10]
+        if s == currency_string:
+            message = "We've found the right contract! Submitted query for " + currency_string
+        else:
+            message = f"Contract symbol {s} does not match with the input {currency_string}"
+            # If input is wrong, return blank figure
+            return message, go.Figure()
+
 
     if any([i is None for i in [edt_date, edt_hour, edt_minute, edt_second]]):
         end_date_time = ''
@@ -241,14 +273,6 @@ def update_candlestick_graph(n_clicks, currency_string, what_to_show, bar_size_s
                         + str(edt_second) + " EST"
 
     duration_str = duration_str_number + " " + duration_str_unit
-
-    # First things first -- what currency pair history do you want to fetch?
-    # Define it as a contract object!
-    contract = Contract()
-    contract.symbol = currency_string.split(".")[0]  # set this to the FIRST currency (before the ".")
-    contract.secType = 'CASH'
-    contract.exchange = 'IDEALPRO'  # 'IDEALPRO' is the currency exchange.
-    contract.currency = currency_string.split(".")[1]  # set this to the FIRST currency (before the ".")
 
     ############################################################################
     ############################################################################
@@ -311,7 +335,8 @@ def update_candlestick_graph(n_clicks, currency_string, what_to_show, bar_size_s
     ############################################################################
 
     # Return your updated text to currency-output, and the figure to candlestick-graph outputs
-    return ('Submitted query for ' + currency_string), fig
+    return message, fig
+
 
 
 # Callback for what to do when trade-button is pressed
