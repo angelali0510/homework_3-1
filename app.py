@@ -196,9 +196,8 @@ app.layout = html.Div([
     html.H1("Section 2: Make a Trade"),
     html.Div(id='trade-output'),
 
-    html.div([
+    html.Div([
         html.H4("Contract Inputs:"),
-        html.Br(),
 
         # Text input for the contract symbol to be traded
         html.H4("Type in the contract symbol ('EUR', 'TSLA', etc.):"),
@@ -225,10 +224,11 @@ app.layout = html.Div([
         dcc.Input(id='primary-exchange', type='text'),
         html.Br(),
     ]),
+    html.Br(),
+    html.Br(),
 
     html.Div([
         html.H4("Order Inputs:"),
-        html.Br(),
 
         # Radio items to select buy or sell
         dcc.RadioItems(
@@ -263,6 +263,8 @@ app.layout = html.Div([
         dcc.Input(id='lmt-price', type='number'),
         html.Br(),
     ]),
+    html.Br(),
+    html.Br(),
 
     # Submit button for the trade
     html.Button('Trade', id='trade-button', n_clicks=0)
