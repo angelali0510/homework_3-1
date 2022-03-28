@@ -16,7 +16,7 @@ server = app.server
 # Define the layout.
 app.layout = html.Div([
 
-    # Section title
+    # Section title8
     html.H1("Section 1: Fetch & Display exchange rate historical data"),
 
     # endDateTime parameter
@@ -123,8 +123,8 @@ app.layout = html.Div([
         ["Choose the size of the bar",
          dcc.Dropdown(
              ["1 sec", "5 secs", "15 secs", "30 secs", "1 min", "2 mins", "3 mins",
-              "5 mins", '15 mins', "30 mins", "1 hour", "1 day"],
-             "1 day", id='bar-size-setting')],
+              "5 mins", '15 mins', "30 mins", "1 hour", "1 day"], value="1 day",
+             id='bar-size-setting')],
         style={'width': '365px'},
     ),
     html.Br(),
