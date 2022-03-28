@@ -23,3 +23,6 @@ historical_data = fetch_historical_data(contract)
 print(historical_data)
 
 # This script is an excellent place for scratch work as you figure this out.
+
+
+
