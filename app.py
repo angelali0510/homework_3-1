@@ -279,7 +279,7 @@ app.layout = html.Div([
 
         # Numeric input for the lmtPrice
         html.Label("Limit Price"),
-        dcc.Input(id='lmt-price-input', type='number'),
+        dcc.Input(id='lmt-price-input', type='number', step=0.01),
         html.Br(),
     ]),
     html.Br(),
