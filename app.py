@@ -1,11 +1,14 @@
 import dash
 import plotly.graph_objects as go
-from dash import dcc
+from dash import dcc, dash_table
 from dash import html
 from dash.dependencies import Input, Output, State
 from ibapi.contract import Contract
+from ibapi.order import Order
+
 from fintech_ibkr import *
 import pandas as pd
+import datetime
 
 # Make a Dash app!
 app = dash.Dash(__name__)
@@ -13,10 +16,13 @@ app = dash.Dash(__name__)
 # ADD this!
 server = app.server
 
+# Read data file
+df = pd.read_csv('submitted_orders.csv')
+
 # Define the layout.
 app.layout = html.Div([
 
-    # Section title8
+    # Section title
     html.H1("Section 1: Fetch & Display exchange rate historical data"),
 
     # endDateTime parameter
@@ -189,46 +195,59 @@ app.layout = html.Div([
             children=dcc.Graph(id='candlestick-graph')
         )
     ),
-
-    # Another line break
     html.Br(),
+
     # Section title
     html.H1("Section 2: Make a Trade"),
-    html.Div(id='trade-output'),
 
     html.Div([
-        html.H4("Contract Inputs:"),
+        html.H3("Contract Inputs:"),
 
         # Text input for the contract symbol to be traded
-        html.H4("Type in the contract symbol ('EUR', 'TSLA', etc.):"),
-        dcc.Input(id='contract-symbol', value='AUD', type='text'),
-        html.Br(),
+        html.Div(
+            children=["Contract Symbol: ", dcc.Input(
+                id='symbol-input', value='AUD', type='text'
+            )],
+            style={'display': 'inline-block', 'padding-top': '5px'}
+        ),
 
         # Text input for the secType to be traded
-        html.H4("Type in secType ('CASH', 'STK', etc.):"),
-        dcc.Input(id='sec-type', value='CASH', type='text'),
-        html.Br(),
+        html.Div(
+            children=["secType: ", dcc.Input(
+                id='secType-input', value='CASH', type='text'
+            )],
+            style={'display': 'inline-block', 'padding-top': '5px'}
+        ),
 
         # Text input for the currency to be traded
-        html.H4("Type in the currency:"),
-        dcc.Input(id='currency', value='USD', type='text'),
-        html.Br(),
+        html.Div(
+            children=["Currency: ", dcc.Input(
+                id='contract-currency-input', value='USD', type='text'
+            )],
+            style={'display': 'inline-block', 'padding-top': '5px'}
+        ),
 
         # Text input for the exchange to be traded
-        html.H4("Type in the exchange:"),
-        dcc.Input(id='exchange', type='text'),
-        html.Br(),
+        html.Div(
+            children=["Exchange: ", dcc.Input(
+                id='contract-exchange-input', value='IDEALPRO', type='text'
+            )],
+            style={'display': 'inline-block', 'padding-top': '5px'}
+        ),
 
         # Text input for the primaryExchange to be traded
-        html.H4("Type in primaryExchange:"),
-        dcc.Input(id='primary-exchange', type='text'),
-        html.Br(),
+        html.Div(
+            children=["Primary Exchange: ", dcc.Input(
+                id='primary-exchange-input', type='text'
+            )],
+            style={'display': 'inline-block', 'padding-top': '5px'}
+        ),
     ]),
-    html.Br(),
     html.Br(),
 
     html.Div([
-        html.H4("Order Inputs:"),
+        html.H3("Order Inputs:"),
+        html.Div(id='trade-output'),
 
         # Radio items to select buy or sell
         dcc.RadioItems(
@@ -242,39 +261,45 @@ app.layout = html.Div([
         html.Br(),
 
         # Numeric input for the trade amount
-        html.H4("Type in the amount to be traded:"),
-        dcc.Input(id='trade-amt', value='20000', type='number'),
+        html.Label("Total Quantity"),
+        dcc.Input(id='trade-amt', value='200', type='number'),
+        html.Br(),
         html.Br(),
 
         # Radio items to select orderType
-        html.H4("Select orderType:"),
         dcc.RadioItems(
-            id='order-type',
+            id='mkt-or-lmt',
             options=[
-                {'label': 'MKT', 'value': 'MKT'},
-                {'label': 'LMT', 'value': 'LMT'}
+                {'label': 'Market', 'value': 'MKT'},
+                {'label': 'Limit', 'value': 'LMT'}
             ],
             value='MKT'
         ),
         html.Br(),
 
         # Numeric input for the lmtPrice
-        html.H4("Type in the lmtPrice:"),
-        dcc.Input(id='lmt-price', type='number'),
+        html.Label("Limit Price"),
+        dcc.Input(id='lmt-price-input', type='number'),
         html.Br(),
     ]),
     html.Br(),
-    html.Br(),
 
     # Submit button for the trade
-    html.Button('Trade', id='trade-button', n_clicks=0)
+    html.Button('Trade', id='trade-button', n_clicks=0),
+    dcc.ConfirmDialog(
+        id='confirm-alert',
+        message='',
+    ),
+    dash_table.DataTable(df.to_dict('records'), [{"name": i, "id": i} for i in df.columns], id='table')
 ])
 
 
 @app.callback(
     [  # there's more than one output here, so you have to use square brackets to pass it in as an array.
         Output(component_id='currency-output', component_property='children'),
-        Output(component_id='candlestick-graph', component_property='figure')
+        Output(component_id='candlestick-graph', component_property='figure'),
+        Output(component_id='confirm-alert', component_property='displayed'),
+        Output(component_id='confirm-alert', component_property='message')
     ],
     Input('submit-button', 'n_clicks'),
     # The callback function will
@@ -301,20 +326,21 @@ def update_candlestick_graph(n_clicks, currency_string, what_to_show, bar_size_s
     contract.currency = currency_string.split(".")[1]  # set this to the FIRST currency (before the ".")
 
     # Verify that you've got the right contract
-    contract_details = fetch_contract_details(contract)
+    errmsg = None
+    contract_details, errmsg = fetch_contract_details(contract=contract)
 
-    if type(contract_details) == str:
-        message = f"Error: {contract_details}! Please check your input!"
-        # If input is wrong, return blank figure
-        return message, go.Figure()
-    else:
-        s = str(contract_details).split(",")[10]
-        if s == currency_string:
-            message = "We've found the right contract! Submitted query for " + currency_string
-        else:
-            message = f"Contract symbol {s} does not match with the input {currency_string}"
-            # If input is wrong, return blank figure
-            return message, go.Figure()
+    # if type(contract_details) == str:
+    #     message = f"Error: {contract_details}! Please check your input!"
+    #     # If input is wrong, return blank figure
+    #     return message, go.Figure()
+    # else:
+    #     s = str(contract_details).split(",")[10]
+    #     if s == currency_string:
+    #         message = "We've found the right contract! Submitted query for " + currency_string
+    #     else:
+    #         message = f"Contract symbol {s} does not match with the input {currency_string}"
+    #         # If input is wrong, return blank figure
+    #         return message, go.Figure()
 
     if any([i is None for i in [edt_date, edt_hour, edt_minute, edt_second]]):
         end_date_time = ''
@@ -338,28 +364,39 @@ def update_candlestick_graph(n_clicks, currency_string, what_to_show, bar_size_s
     # Some default values are provided below to help with your testing.
     # Don't forget -- you'll need to update the signature in this callback
     #   function to include your new vars!
-    cph = fetch_historical_data(
-        contract=contract,
-        endDateTime=end_date_time,
-        durationStr=duration_str,
-        barSizeSetting=bar_size_setting,
-        whatToShow=what_to_show,
-        useRTH=use_rth
-    )
-    # # Make the candlestick figure
-    fig = go.Figure(
-        data=[
-            go.Candlestick(
-                x=cph['date'],
-                open=cph['open'],
-                high=cph['high'],
-                low=cph['low'],
-                close=cph['close']
-            )
-        ]
-    )
+    if errmsg is None:
+        cph = fetch_historical_data(
+            contract=contract,
+            endDateTime=end_date_time,
+            durationStr=duration_str,
+            barSizeSetting=bar_size_setting,
+            whatToShow=what_to_show,
+            useRTH=use_rth
+        )
+        # # Make the candlestick figure
+        fig = go.Figure(
+            data=[
+                go.Candlestick(
+                    x=cph['date'],
+                    open=cph['open'],
+                    high=cph['high'],
+                    low=cph['low'],
+                    close=cph['close']
+                )
+            ]
+        )
     # # Give the candlestick figure a title
-    fig.update_layout(title=('Exchange Rate: ' + currency_string))
+        fig.update_layout(title=('Exchange Rate: ' + currency_string))
+    else:
+        fig = go.Figure(
+            data=[
+                go.Candlestick(
+                )
+            ]
+        )
+        fig.update_layout(title=('Exchange Rate: ' + currency_string))
+        print(errmsg)
+        return ('Submitted query for ' + currency_string), fig, True, 'Error: ' + errmsg
     ############################################################################
     ############################################################################
 
@@ -387,35 +424,75 @@ def update_candlestick_graph(n_clicks, currency_string, what_to_show, bar_size_s
     ############################################################################
 
     # Return your updated text to currency-output, and the figure to candlestick-graph outputs
-    return message, fig
+    return ('Submitted query for ' + currency_string), fig, False, ''
 
 
 # Callback for what to do when trade-button is pressed
 @app.callback(
     # We're going to output the result to trade-output
     Output(component_id='trade-output', component_property='children'),
+    Output(component_id='table', component_property='data'),
     # We only want to run this callback function when the trade-button is pressed
     Input('trade-button', 'n_clicks'),
-    # We DON'T want to run this function whenever buy-or-sell, trade-currency, or trade-amt is updated, so we pass those
-    #   in as States, not Inputs:
-    [State('buy-or-sell', 'value'), State('trade-currency', 'value'), State('trade-amt', 'value')],
+    # We DON'T want to run this function whenever buy-or-sell, trade-currency, or trade-amt is updated, so we pass those in as States, not Inputs:
+    [State('buy-or-sell', 'value'), State('contract-currency-input', 'value'),
+     State('trade-amt', 'value'), State('mkt-or-lmt', 'value'),
+     State('secType-input', 'value'), State('symbol-input', 'value'),
+     State('contract-exchange-input', 'value'),
+     State('primary-exchange-input', 'value'),
+     State('lmt-price-input', 'value')],
     # We DON'T want to start executing trades just because n_clicks was initialized to 0!!!
     prevent_initial_call=True
 )
-def trade(n_clicks, action, trade_currency, trade_amt):  # Still don't use n_clicks, but we need the dependency
+def trade(n_clicks, action, trade_currency, trade_amt, order_type,
+          sec_type, symbol, exchange, primary_exchange, limit_price):
+    # Still don't use n_clicks, but we need the dependency
 
     # Make the message that we want to send back to trade-output
-    msg = action + ' ' + trade_amt + ' ' + trade_currency
+    msg = action + ' ' + str(trade_amt) + ' ' + trade_currency
+    contract = Contract()
+    contract.symbol = symbol
+    contract.secType = sec_type
+    contract.exchange = exchange  # 'IDEALPRO' is the currency exchange.
+    # contract.currency = value.split(".")[1]
+    contract.currency = trade_currency
+    if primary_exchange is not None:
+        contract.primaryExchange = primary_exchange
 
-    # Make our trade_order object -- a DICTIONARY.
-    trade_order = {
-        "action": action,
-        "trade_currency": trade_currency,
-        "trade_amt": trade_amt
-    }
+    order = Order()
+    order.action = action
+    order.orderType = order_type
+    order.totalQuantity = trade_amt
+    if order_type == 'LMT':
+        if limit_price is None:
+            return 'Limit price must have a value!'
+        order.lmtPrice = limit_price
 
-    # Return the message, which goes to the trade-output div's "children" attribute.
-    return msg
+    fetch_contract_details_new(contract)
+    file_path = 'submitted_orders.csv'
+    info = place_order(contract, order)
+    print(info)
+
+    order_id = info['order_id'][0]
+    client_id = info['client_id'][0]
+    perm_id = info['perm_id'][0]
+    con_id = contract.conId
+    timestamp = fetch_current_time()
+    new_data = {'timestamp': [timestamp],
+                'order_id': [order_id],
+                'client_id': [client_id],
+                'perm_id': [perm_id],
+                'con_id': [con_id],
+                'symbol': [symbol],
+                'action': [action],
+                'size': [trade_amt],
+                'order_type': [order_type],
+                'lmt_price': [limit_price]}
+    new_line = pd.DataFrame(new_data)
+    new_line.to_csv(file_path, mode='a', header=False, index=False)
+    df = pd.read_csv(file_path)
+
+    return msg, df.to_dict('records')
 
 
 # Run it!
